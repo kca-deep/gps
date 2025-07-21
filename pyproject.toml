@@ -1,0 +1,120 @@
+[project]
+name = "gps-inspection"
+version = "0.1.0"
+description = "무선국 검사 AI 채팅 시스템"
+authors = [
+    {name = "GPS Inspection Team", email = "team@example.com"}
+]
+dependencies = [
+    "Flask>=3.0.0",
+    "Flask-CORS>=4.0.0",
+    "openai>=1.3.7",
+    "python-Levenshtein>=0.23.0",
+    "konlpy>=0.6.0",
+    "geopy>=2.4.1",
+    "python-dotenv>=1.0.0",
+    "requests>=2.31.0",
+    "aiohttp>=3.9.1",
+    "structlog>=23.2.0",
+    "cachetools>=5.3.2",
+    "py-hanspell>=1.1",
+]
+requires-python = ">=3.10"
+readme = "README.md"
+license = {text = "MIT"}
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.3",
+    "pytest-cov>=4.1.0",
+    "pytest-flask>=1.3.0",
+    "ruff>=0.1.8",
+    "black>=23.11.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+# 코드 분석 대상 디렉토리
+src = ["src", "tests"]
+line-length = 88
+target-version = "py310"
+
+# 활성화할 규칙
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "C4", # flake8-comprehensions
+    "UP", # pyupgrade
+    "N",  # pep8-naming
+    "D",  # pydocstyle
+]
+
+# 비활성화할 규칙
+ignore = [
+    "E501",  # line too long (handled by black)
+    "D100",  # Missing docstring in public module
+    "D104",  # Missing docstring in public package
+    "D203",  # 1 blank line required before class docstring
+    "D213",  # Multi-line docstring summary should start at the second line
+]
+
+# 특정 파일/디렉토리 제외
+exclude = [
+    ".git",
+    "__pycache__",
+    "build",
+    "dist",
+    "venv",
+    ".venv",
+]
+
+[tool.ruff.per-file-ignores]
+"tests/*" = ["D"]  # 테스트 파일은 docstring 검사 제외
+"*/migrations/*" = ["D", "N"]  # 마이그레이션 파일 제외
+
+[tool.ruff.pydocstyle]
+convention = "google"
+
+[tool.ruff.isort]
+known-first-party = ["gps_inspection"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--cov=src/gps_inspection",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--strict-markers",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]
+
+[tool.black]
+line-length = 88
+target-version = ['py310']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+''' 

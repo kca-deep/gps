@@ -1,0 +1,2082 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPS 선박검사 위치정보 수집 AI Agent</title>
+    <!-- Google Fonts - Inter + Noto Sans KR -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #1e40af;
+            --primary-gradient: linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #60a5fa 100%);
+            --secondary-color: #f59e0b;
+            --accent-color: #10b981;
+            --surface-color: #ffffff;
+            --surface-dark: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            --border-color: #e2e8f0;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+            --radius-sm: 0.375rem;
+            --radius-md: 0.5rem;
+            --radius-lg: 0.75rem;
+            --radius-xl: 1rem;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 14px;
+            padding: 1rem;
+        }
+
+        .chat-container {
+            width: 400px;
+            height: 800px;
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-xl);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .chat-header {
+            background: var(--primary-gradient);
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .chat-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            opacity: 0.3;
+        }
+
+        .chat-header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .chat-header-right {
+            position: relative;
+            z-index: 1;
+        }
+
+        .chat-header-icon {
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            position: relative;
+            z-index: 1;
+        }
+
+        .chat-header-info {
+            position: relative;
+            z-index: 1;
+        }
+
+        .chat-header-info h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: white;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .chat-header-info p {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.8);
+            margin-top: 2px;
+        }
+
+        .connection-status {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 20px;
+            padding: 6px 12px;
+            font-size: 11px;
+            font-weight: 600;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .connection-status::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #10b981;
+            animation: blink 2s infinite;
+        }
+
+        .connection-status.error::before {
+            background: #ef4444;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: var(--surface-dark);
+        }
+
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+            align-items: flex-end;
+            gap: 12px;
+            animation: fadeInUp 0.4s ease-out;
+        }
+
+        .message.user {
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: 600;
+            color: white;
+            flex-shrink: 0;
+            box-shadow: var(--shadow-md);
+            border: 2px solid rgba(255, 255, 255, 0.8);
+        }
+
+        .message.user .message-avatar {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+
+        .message.ai .message-avatar {
+            background: var(--primary-gradient);
+        }
+
+        .message-content {
+            max-width: 70%;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .message.user .message-content {
+            align-items: flex-end;
+        }
+
+        .message-bubble {
+            padding: 14px 18px;
+            border-radius: var(--radius-lg);
+            word-wrap: break-word;
+            line-height: 1.6;
+            font-size: 14px;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.2s ease;
+        }
+
+        .message-bubble:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .message.user .message-bubble {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .message.ai .message-bubble {
+            background: var(--surface-color);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .message-time {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin: 0 6px;
+            font-weight: 500;
+        }
+
+        .quick-actions {
+            padding: 8px 20px;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            border-top: 1px solid #e2e8f0;
+            border-bottom: 1px solid #e2e8f0;
+            box-shadow: 
+                inset 0 1px 0 rgba(255, 255, 255, 0.8),
+                0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+
+        .quick-actions-title {
+            display: none;
+        }
+
+        .quick-actions-buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            justify-content: center;
+        }
+
+        .quick-action-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 4px;
+            background: linear-gradient(145deg, #ffffff, #f8fafc);
+            border: 1px solid transparent;
+            border-radius: 8px;
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 
+                0 1px 2px rgba(0, 0, 0, 0.05),
+                inset 0 1px 0 rgba(255, 255, 255, 0.5);
+            min-height: 36px;
+            text-align: center;
+        }
+
+        .quick-action-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, 
+                rgba(30, 64, 175, 0.1), 
+                rgba(59, 130, 246, 0.1), 
+                rgba(96, 165, 250, 0.1));
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            border-radius: 10px;
+        }
+
+        .quick-action-btn::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            right: 2px;
+            bottom: 2px;
+            background: linear-gradient(145deg, #ffffff, #f1f5f9);
+            border-radius: 8px;
+            z-index: -1;
+            transition: all 0.2s ease;
+        }
+
+        .quick-action-btn .btn-icon {
+            font-size: 16px;
+            margin-bottom: 2px;
+            transition: all 0.2s ease;
+            filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+        }
+
+        .quick-action-btn .btn-text {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.2px;
+            transition: all 0.2s ease;
+        }
+
+        .quick-action-btn:hover {
+            transform: translateY(-1px);
+            border-color: rgba(30, 64, 175, 0.3);
+            box-shadow: 
+                0 4px 8px rgba(30, 64, 175, 0.15),
+                0 2px 4px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        }
+
+        .quick-action-btn:hover::before {
+            opacity: 1;
+        }
+
+        .quick-action-btn:hover .btn-text {
+            color: var(--primary-color);
+            font-weight: 700;
+        }
+
+        .quick-action-btn:active {
+            transform: translateY(0);
+            transition: all 0.1s ease;
+        }
+
+        /* 각 버튼별 고유 색상 */
+        .quick-action-btn[data-action="무선국 등록해줘"]:hover {
+            border-color: rgba(16, 185, 129, 0.4);
+            background: linear-gradient(145deg, rgba(236, 253, 245, 0.8), rgba(209, 250, 229, 0.8));
+        }
+
+        .quick-action-btn[data-action="무선국 등록해줘"]:hover .btn-icon {
+            filter: drop-shadow(0 2px 4px rgba(16, 185, 129, 0.4));
+        }
+
+        .quick-action-btn[data-action="GPS 정보 다시 확인"]:hover {
+            border-color: rgba(245, 158, 11, 0.4);
+            background: linear-gradient(145deg, rgba(255, 251, 235, 0.8), rgba(254, 243, 199, 0.8));
+        }
+
+        .quick-action-btn[data-action="GPS 정보 다시 확인"]:hover .btn-icon {
+            filter: drop-shadow(0 2px 4px rgba(245, 158, 11, 0.4));
+        }
+
+        .quick-action-btn[data-action="무선국 검색해줘"]:hover {
+            border-color: rgba(139, 92, 246, 0.4);
+            background: linear-gradient(145deg, rgba(245, 243, 255, 0.8), rgba(221, 214, 254, 0.8));
+        }
+
+        .quick-action-btn[data-action="무선국 검색해줘"]:hover .btn-icon {
+            filter: drop-shadow(0 2px 4px rgba(139, 92, 246, 0.4));
+        }
+
+        .quick-action-btn[data-action="내 위치 주변 무선국 검색"]:hover {
+            border-color: rgba(239, 68, 68, 0.4);
+            background: linear-gradient(145deg, rgba(254, 242, 242, 0.8), rgba(254, 226, 226, 0.8));
+        }
+
+        .quick-action-btn[data-action="내 위치 주변 무선국 검색"]:hover .btn-icon {
+            filter: drop-shadow(0 2px 4px rgba(239, 68, 68, 0.4));
+        }
+
+
+
+        .chat-input {
+            display: flex;
+            padding: 14px 20px;
+            background: var(--surface-color);
+            border-top: 1px solid var(--border-color);
+            gap: 12px;
+            align-items: center;
+        }
+
+        .input-group {
+            flex: 1;
+            display: flex;
+            background: var(--surface-dark);
+            border-radius: var(--radius-xl);
+            padding: 12px 16px;
+            align-items: center;
+            gap: 12px;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+
+        .input-group:focus-within {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1);
+        }
+
+        .input-group.search-mode {
+            border-color: #8b5cf6;
+            background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+        }
+
+        .input-group.search-mode .message-input {
+            background: transparent;
+        }
+
+        .message-input {
+            flex: 1;
+            border: none;
+            outline: none;
+            background: transparent;
+            font-size: 14px;
+            color: var(--text-primary);
+            font-family: inherit;
+        }
+
+        .message-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .send-btn {
+            width: 40px;
+            height: 40px;
+            background: var(--primary-gradient);
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: white;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow-md);
+        }
+
+        .voice-btn {
+            width: 40px;
+            height: 40px;
+            background: var(--primary-gradient);
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: white;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow-md);
+        }
+
+        .send-btn:hover, .voice-btn:hover {
+            transform: scale(1.05);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .voice-btn:hover {
+            transform: scale(1.05);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .send-btn:disabled {
+            background: var(--surface-dark);
+            color: var(--text-muted);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .voice-btn.recording {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            animation: pulse 1.5s infinite;
+        }
+
+        .voice-btn.not-supported {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { transform: scale(1.05); box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
+        .typing-indicator {
+            display: none;
+            align-items: center;
+            gap: 12px;
+            padding: 16px 20px;
+            color: var(--text-secondary);
+            font-size: 13px;
+            background: var(--surface-color);
+            border-top: 1px solid var(--border-color);
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+        }
+
+        .typing-dot {
+            width: 6px;
+            height: 6px;
+            background: var(--primary-gradient);
+            border-radius: 50%;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes typing {
+            0%, 80%, 100% { 
+                transform: scale(0.6);
+                opacity: 0.3;
+            }
+            40% { 
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .error-message {
+            background: linear-gradient(135deg, #fef2f2, #fecaca);
+            color: #dc2626;
+            padding: 12px 16px;
+            border-radius: var(--radius-lg);
+            font-size: 12px;
+            margin: 12px 20px;
+            border: 1px solid #fecaca;
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* 스크롤바 스타일 */
+        .chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chat-messages::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: var(--primary-gradient);
+            border-radius: 3px;
+            opacity: 0.6;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+            opacity: 1;
+        }
+
+        /* 네비게이션 모달 스타일 */
+        .navigation-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+
+        .navigation-modal.show {
+            display: flex;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .navigation-modal-content {
+            background: white;
+            border-radius: var(--radius-xl);
+            padding: 24px;
+            max-width: 320px;
+            width: 90%;
+            box-shadow: var(--shadow-xl);
+            position: relative;
+            animation: slideUp 0.3s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .navigation-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .navigation-modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .navigation-modal-close {
+            background: none;
+            border: none;
+            font-size: 20px;
+            color: var(--text-muted);
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .navigation-modal-close:hover {
+            background: var(--surface-dark);
+            color: var(--text-primary);
+        }
+
+        .navigation-option {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            margin-bottom: 8px;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            background: var(--surface-color);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .navigation-option:hover {
+            border-color: var(--primary-color);
+            background: rgba(30, 64, 175, 0.05);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .navigation-option-icon {
+            width: 40px;
+            height: 40px;
+            margin-right: 12px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            background: var(--surface-dark);
+        }
+
+        .navigation-option-info {
+            flex: 1;
+        }
+
+        .navigation-option-name {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .navigation-option-desc {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .navigation-btn {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            text-decoration: none;
+            margin-left: 8px;
+            box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+        }
+
+        .navigation-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+            background: linear-gradient(135deg, #059669, #047857);
+        }
+
+        .navigation-btn i {
+            font-size: 10px;
+        }
+
+        /* 반응형 디자인 */
+        @media (max-width: 768px) {
+            body {
+                padding: 0.5rem;
+            }
+            
+            .chat-container {
+                width: 100%;
+                max-width: 480px;
+                height: calc(100vh - 1rem);
+            }
+            
+            .chat-header {
+                padding: 12px 16px;
+            }
+            
+            .chat-messages {
+                padding: 16px;
+            }
+            
+            .chat-input {
+                padding: 12px 16px;
+            }
+            
+            .quick-actions {
+                padding: 6px 16px;
+                background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+                border-top: 1px solid #e2e8f0;
+                border-bottom: 1px solid #e2e8f0;
+            }
+
+            .quick-actions-buttons {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 6px;
+            }
+
+            .quick-action-btn {
+                padding: 6px 4px;
+                min-height: 32px;
+                border-radius: 8px;
+            }
+
+            .quick-action-btn .btn-icon {
+                font-size: 14px;
+                margin-bottom: 1px;
+            }
+
+            .quick-action-btn .btn-text {
+                font-size: 10px;
+                font-weight: 700;
+                letter-spacing: 0.1px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .chat-container {
+                width: 100%;
+                height: 100vh;
+                border-radius: 0;
+            }
+            
+            .chat-header {
+                padding: 10px 12px;
+            }
+
+            .chat-header-info h3 {
+                font-size: 14px;
+            }
+            
+            .quick-actions {
+                padding: 4px 12px;
+                background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+                border-top: 1px solid #e2e8f0;
+                border-bottom: 1px solid #e2e8f0;
+            }
+
+            .quick-actions-buttons {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 4px;
+            }
+            
+            .quick-action-btn {
+                padding: 4px 2px;
+                min-height: 28px;
+                border-radius: 6px;
+            }
+
+            .quick-action-btn .btn-icon {
+                font-size: 12px;
+                margin-bottom: 1px;
+            }
+
+            .quick-action-btn .btn-text {
+                font-size: 9px;
+                font-weight: 700;
+                letter-spacing: 0.1px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <!-- 채팅 헤더 -->
+        <div class="chat-header">
+            <div class="chat-header-left">
+                <div class="chat-header-icon">📡</div>
+                <div class="chat-header-info">
+                    <h3>GPS 선박검사 위치정보 수집<br/>AI Agent</h3>
+                </div>
+            </div>
+            <div class="chat-header-right">
+                <div class="connection-status" id="connection-status-display">연결됨</div>
+            </div>
+        </div>
+
+        <!-- 채팅 메시지 영역 -->
+        <div class="chat-messages" id="chat-messages">
+            <!-- 메시지들이 여기에 동적으로 추가됩니다 -->
+        </div>
+
+        <!-- 타이핑 인디케이터 -->
+        <div class="typing-indicator" id="typing-indicator">
+            <span>AI가 답변을 준비중</span>
+            <div class="typing-dots">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            </div>
+        </div>
+
+        <!-- 빠른 액션 버튼 -->
+        <div class="quick-actions" id="quick-actions" style="display: none;">
+            <div class="quick-actions-title">빠른 액션</div>
+            <div class="quick-actions-buttons" id="quick-actions-buttons">
+                <!-- 빠른 액션 버튼들이 여기에 동적으로 추가됩니다 -->
+            </div>
+        </div>
+
+        <!-- 채팅 입력 영역 -->
+        <div class="chat-input">
+            <div class="input-group">
+                <input type="text" class="message-input" id="message-input" placeholder="메시지를 입력하세요..." maxlength="500">
+            </div>
+            <button class="send-btn" id="send-btn" type="button">
+                ➤
+            </button>
+            <button class="voice-btn" id="voice-btn" type="button" title="음성 입력">
+                <i class="fas fa-microphone"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- 네비게이션 모달 -->
+    <div class="navigation-modal" id="navigation-modal">
+        <div class="navigation-modal-content">
+            <div class="navigation-modal-header">
+                <div class="navigation-modal-title">🧭 네비게이션 선택</div>
+                <button class="navigation-modal-close" onclick="closeNavigationModal()">×</button>
+            </div>
+            <div id="navigation-options">
+                <!-- 네비게이션 옵션들이 동적으로 추가됩니다 -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class ChatApp {
+            constructor() {
+                this.sessionId = null;
+                this.userLocation = null;
+                this.apiBaseUrl = '/api/chat';
+                
+                this.messagesContainer = document.getElementById('chat-messages');
+                this.messageInput = document.getElementById('message-input');
+                this.sendBtn = document.getElementById('send-btn');
+                this.typingIndicator = document.getElementById('typing-indicator');
+                this.quickActionsContainer = document.getElementById('quick-actions-buttons');
+                this.connectionStatus = document.getElementById('connection-status');
+                this.connectionStatusDisplay = document.getElementById('connection-status-display');
+                this.voiceBtn = document.getElementById('voice-btn');
+                
+                // 음성 인식 설정
+                this.recognition = null;
+                this.isRecording = false;
+                
+                this.initializeEventListeners();
+                this.initializeSpeechRecognition();
+                
+                // 위치 정보 획득 후 세션 초기화
+                this.requestLocationPermission().then(() => {
+                    this.initializeSession();
+                });
+            }
+
+            initializeEventListeners() {
+                // 메시지 입력 이벤트
+                this.messageInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        this.sendMessage();
+                    }
+                });
+
+                // 전송 버튼 클릭
+                this.sendBtn.addEventListener('click', () => {
+                    this.sendMessage();
+                });
+
+                // 입력 필드 변화 감지
+                this.messageInput.addEventListener('input', () => {
+                    this.sendBtn.disabled = !this.messageInput.value.trim();
+                });
+
+                // 음성 입력 버튼 클릭
+                this.voiceBtn.addEventListener('click', () => {
+                    this.toggleVoiceRecording();
+                });
+            }
+
+            async initializeSession() {
+                console.log('initializeSession 호출됨');
+                console.log('현재 userLocation:', this.userLocation);
+                
+                // 기존 세션이 있다면 서버에 삭제 요청
+                if (this.sessionId) {
+                    console.log(`기존 세션 ${this.sessionId} 삭제 요청`);
+                    try {
+                        await fetch(`${this.apiBaseUrl}/session/${this.sessionId}`, {
+                            method: 'DELETE'
+                        });
+                        console.log(`기존 세션 ${this.sessionId} 삭제 완료`);
+                    } catch (error) {
+                        console.warn(`기존 세션 ${this.sessionId} 삭제 실패:`, error);
+                    }
+                    this.sessionId = null;
+                }
+
+                try {
+                    console.log('새 세션 초기화 fetch 요청 시작');
+                    const response = await fetch(`${this.apiBaseUrl}/session`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            location: this.userLocation
+                        })
+                    });
+                    console.log('세션 초기화 fetch 요청 완료, 응답 상태:', response.status);
+
+                    if (response.ok) {
+                        console.log('세션 초기화 응답 OK, JSON 파싱 시도...');
+                        const data = await response.json();
+                        console.log('세션 초기화 응답 데이터:', data);
+                        this.sessionId = data.session_id;
+                        this.messagesContainer.innerHTML = '';
+                        this.addMessage('ai', data.message);
+                        
+                        // 항상 고정된 빠른 액션만 표시 (전체 버튼 제거)
+                        this.updateQuickActions([
+                            { action: '무선국 등록해줘', text: '등록', icon: '📡' },
+                            { action: 'GPS 정보 다시 확인', text: '재확인', icon: '📍' },
+                            { action: '무선국 검색해줘', text: '검색', icon: '🔍' },
+                            { action: '내 위치 주변 무선국 검색', text: '주변검색', icon: '🗺️' }
+                        ]);
+                        
+                        this.updateConnectionStatus('연결됨', 'success');
+                    } else {
+                        console.error('세션 초기화 실패: 응답 상태 코드', response.status);
+                        const errorText = await response.text();
+                        console.error('세션 초기화 실패: 응답 본문', errorText);
+                        throw new Error(`세션 초기화 실패: ${response.status} ${response.statusText}`);
+                    }
+                } catch (error) {
+                    console.error('세션 초기화 오류:', error);
+                    this.updateConnectionStatus('연결 실패', 'error');
+                    this.showError('연결에 실패했습니다. 페이지를 새로고침해 주세요.');
+                    
+                    // 연결 실패 시 GPS 요청만 제공
+                    this.updateQuickActions([
+                        { action: 'request_location', text: 'GPS요청', icon: '📍' }
+                    ]);
+                }
+            }
+
+            initializeSpeechRecognition() {
+                // Web Speech API 지원 확인
+                if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                    console.log('음성 인식이 지원되지 않는 브라우저입니다.');
+                    this.voiceBtn.classList.add('not-supported');
+                    this.voiceBtn.title = '음성 입력이 지원되지 않습니다';
+                    this.voiceBtn.disabled = true;
+                    return;
+                }
+
+                // SpeechRecognition 객체 생성
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                this.recognition = new SpeechRecognition();
+
+                // 음성 인식 설정
+                this.recognition.lang = 'ko-KR';
+                this.recognition.continuous = false;
+                this.recognition.interimResults = true;
+                this.recognition.maxAlternatives = 1;
+
+                // 음성 인식 이벤트 핸들러
+                this.recognition.onstart = () => {
+                    console.log('음성 인식 시작');
+                    this.isRecording = true;
+                    this.voiceBtn.classList.add('recording');
+                    this.voiceBtn.title = '음성 인식 중... (클릭하여 중단)';
+                    this.messageInput.placeholder = '말씀해 주세요...';
+                };
+
+                this.recognition.onresult = (event) => {
+                    let transcript = '';
+                    let isFinal = false;
+
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        transcript += event.results[i][0].transcript;
+                        if (event.results[i].isFinal) {
+                            isFinal = true;
+                        }
+                    }
+
+                    // 실시간으로 텍스트 업데이트
+                    this.messageInput.value = transcript;
+                    
+                    if (isFinal) {
+                        console.log('음성 인식 완료:', transcript);
+                        this.sendBtn.disabled = !transcript.trim();
+                    }
+                };
+
+                this.recognition.onerror = (event) => {
+                    console.error('음성 인식 오류:', event.error);
+                    this.stopVoiceRecording();
+                    
+                    let errorMessage = '음성 인식 중 오류가 발생했습니다.';
+                    switch (event.error) {
+                        case 'no-speech':
+                            errorMessage = '음성이 감지되지 않았습니다. 다시 시도해 주세요.';
+                            break;
+                        case 'audio-capture':
+                            errorMessage = '마이크에 접근할 수 없습니다. 권한을 확인해 주세요.';
+                            break;
+                        case 'not-allowed':
+                            errorMessage = '마이크 사용 권한이 거부되었습니다.';
+                            break;
+                        case 'network':
+                            errorMessage = '네트워크 오류가 발생했습니다.';
+                            break;
+                    }
+                    this.showError(errorMessage);
+                };
+
+                this.recognition.onend = () => {
+                    console.log('음성 인식 종료');
+                    this.stopVoiceRecording();
+                };
+
+                console.log('음성 인식 초기화 완료');
+            }
+
+            toggleVoiceRecording() {
+                if (!this.recognition) {
+                    this.showError('음성 인식이 지원되지 않습니다.');
+                    return;
+                }
+
+                if (this.isRecording) {
+                    this.stopVoiceRecording();
+                } else {
+                    this.startVoiceRecording();
+                }
+            }
+
+            startVoiceRecording() {
+                if (!this.recognition || this.isRecording) return;
+
+                try {
+                    this.messageInput.value = '';
+                    this.sendBtn.disabled = true;
+                    this.recognition.start();
+                } catch (error) {
+                    console.error('음성 인식 시작 실패:', error);
+                    this.showError('음성 인식을 시작할 수 없습니다.');
+                }
+            }
+
+            stopVoiceRecording() {
+                if (!this.recognition || !this.isRecording) return;
+
+                try {
+                    this.recognition.stop();
+                } catch (error) {
+                    console.error('음성 인식 중단 실패:', error);
+                } finally {
+                    this.isRecording = false;
+                    this.voiceBtn.classList.remove('recording');
+                    this.voiceBtn.title = '음성 입력';
+                    this.messageInput.placeholder = '메시지를 입력하세요...';
+                }
+            }
+
+            async requestLocationPermission() {
+                if ('geolocation' in navigator) {
+                    try {
+                        this.addMessage('ai', '📍 GPS 위치 권한을 요청합니다. 브라우저에서 "허용"을 클릭해 주세요.');
+                        
+                        const position = await new Promise((resolve, reject) => {
+                            navigator.geolocation.getCurrentPosition(resolve, reject, {
+                                enableHighAccuracy: true,
+                                timeout: 15000,
+                                maximumAge: 300000
+                            });
+                        });
+
+                        this.userLocation = {
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude,
+                            accuracy: position.coords.accuracy
+                        };
+
+                        console.log('위치 정보 획득 성공:', this.userLocation);
+                        
+                        // GPS 좌표 획득 성공 메시지 표시 (주소 변환 포함)
+                        this.addMessage('ai', `✅ GPS 위치를 성공적으로 획득했습니다!\n📍 위치: ${this.userLocation.latitude.toFixed(6)}, ${this.userLocation.longitude.toFixed(6)}\n정확도: 약 ${Math.round(this.userLocation.accuracy)}m\n\n🔄 주소 변환 중...`);
+                        
+                        // 주소 변환과 함께 위치 정보 표시
+                        this.showGpsInfoWithAddressInitial(this.userLocation);
+                        
+                                                 // 고정된 빠른 액션만 업데이트 (전체 버튼 제거)
+                         this.updateQuickActions([
+                             { action: '무선국 등록해줘', text: '등록', icon: '📡' },
+                             { action: 'GPS 정보 다시 확인', text: '재확인', icon: '📍' },
+                             { action: '무선국 검색해줘', text: '검색', icon: '🔍' },
+                             { action: '내 위치 주변 무선국 검색', text: '주변검색', icon: '🗺️' }
+                         ]);
+                        
+                    } catch (error) {
+                        console.log('위치 정보 거부 또는 오류:', error);
+                        
+                        let errorMessage = '';
+                        switch (error.code) {
+                            case error.PERMISSION_DENIED:
+                                errorMessage = '❌ GPS 위치 권한이 거부되었습니다.\n\n대안 옵션:\n1. 브라우저 설정에서 위치 권한을 허용해 주세요\n2. 수동으로 좌표를 입력할 수 있습니다\n3. 주소를 입력하여 좌표를 찾을 수 있습니다';
+                                break;
+                            case error.POSITION_UNAVAILABLE:
+                                errorMessage = '❌ 위치 정보를 사용할 수 없습니다.\n\nGPS 신호가 약하거나 실내에서는 정확한 위치를 받기 어려울 수 있습니다.';
+                                break;
+                            case error.TIMEOUT:
+                                errorMessage = '⏰ 위치 정보 요청이 시간 초과되었습니다.\n\n네트워크 상태를 확인하고 다시 시도해 주세요.';
+                                break;
+                            default:
+                                errorMessage = '❌ 위치 정보 획득 중 오류가 발생했습니다.';
+                        }
+                        
+                        this.addMessage('ai', errorMessage);
+                        
+                        // GPS 요청만 제공
+                        this.updateQuickActions([
+                            { action: 'request_location', text: 'GPS요청', icon: '📍' }
+                        ]);
+                    }
+                } else {
+                    console.log('Geolocation이 지원되지 않는 브라우저입니다.');
+                    this.addMessage('ai', '❌ 이 브라우저는 GPS 위치 서비스를 지원하지 않습니다.\n\n시스템을 사용하려면 GPS가 지원되는 브라우저나 기기를 사용해 주세요.');
+                    
+                    this.updateQuickActions([]);
+                }
+                
+                return Promise.resolve();
+            }
+
+            async handleQuickAction(action) {
+                console.log(`handleQuickAction 호출됨: ${action}`);
+                this.showTypingIndicator();
+
+                try {
+                                         // 현재 사용되는 빠간 액션들 (전체 버튼 제거)
+                     const fixedActions = [
+                         '무선국 등록해줘',
+                         'GPS 정보 다시 확인',
+                         '내 위치 주변 무선국 검색',
+                         '무선국 검색해줘',
+                         'request_location'
+                     ];
+
+                    if (!fixedActions.includes(action)) {
+                        this.hideTypingIndicator();
+                        this.showError(`알 수 없는 빠른 액션: ${action}`);
+                        return;
+                    }
+
+                    // 특별한 액션 처리
+                    if (action === "request_location") {
+                        console.log('GPS 권한 요청 처리');
+                        this.hideTypingIndicator();
+                        await this.requestLocationPermission();
+                        return;
+                    }
+                    
+                    if (action === "GPS 정보 다시 확인") {
+                        this.hideTypingIndicator();
+                        if (this.userLocation) {
+                            // GPS 정보와 함께 주소도 함께 표시
+                            this.showGpsInfoWithAddress(this.userLocation);
+                        } else {
+                            this.addMessage('ai', '❌ GPS 정보가 없습니다. 위치 권한을 허용해 주세요.');
+                            this.updateQuickActions([
+                                { action: 'request_location', text: 'GPS요청', icon: '📍' }
+                            ]);
+                        }
+                        return;
+                    }
+                    
+                                         // 백엔드 메시지 전송이 필요한 액션들 (전체 버튼 제거)
+                     const messageActions = {
+                         '무선국 등록해줘': '무선국 등록해줘',
+                         '내 위치 주변 무선국 검색': '내 위치 주변 무선국 검색',
+                         '무선국 검색해줘': '무선국 검색해줘',
+                         '도움말': '도움말'
+                     };
+                    
+                    if (messageActions[action]) {
+                        console.log(`메시지 액션 처리: ${action} → ${messageActions[action]}`);
+                        console.log('세션 ID:', this.sessionId);
+                        console.log('사용자 위치:', this.userLocation);
+                        this.hideTypingIndicator();
+                        this.sendMessage(messageActions[action]);
+                        return;
+                    }
+
+                } catch (error) {
+                    console.error('빠른 액션 처리 오류:', error);
+                    this.hideTypingIndicator();
+                    this.showError(`빠른 액션 처리 실패: ${action}`);
+                }
+            }
+
+            async showGpsInfoWithAddressInitial(location) {
+                try {
+                    // 주소 변환 API 호출
+                    const response = await fetch('/api/chat/pinpoint-info', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            latitude: location.latitude,
+                            longitude: location.longitude
+                        })
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        
+                        let infoText = `🎯 위치 정보가 완성되었습니다!\n\n`;
+                        infoText += `🗺️ GPS 좌표: ${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}\n`;
+                        infoText += `📏 정확도: 약 ${Math.round(location.accuracy)}m\n\n`;
+                        
+                        // 주소 정보 추가
+                        if (data.address_info && data.address_info.success) {
+                            infoText += `🏠 주소: ${data.address_info.address}\n`;
+                            if (data.address_info.region_name) {
+                                infoText += `📍 지역: ${data.address_info.region_name}\n`;
+                            }
+                            if (data.address_info.detailed_location && data.address_info.detailed_location !== data.address_info.address) {
+                                infoText += `📌 상세 위치: ${data.address_info.detailed_location}\n`;
+                            }
+                        } else {
+                            infoText += `🏠 주소: 변환할 수 없음\n`;
+                            if (data.address_info && data.address_info.error) {
+                                infoText += `   (${data.address_info.error})\n`;
+                            }
+                        }
+                        
+                        // 주변 무선국 정보 추가
+                        if (data.nearby_stations_summary) {
+                            const summary = data.nearby_stations_summary;
+                            infoText += `\n📡 주변 무선국: ${summary.total_count}개 발견 (반경 ${Math.round(summary.search_radius/1000)}km)\n`;
+                        }
+                        
+                        infoText += `\n무선국 등록이나 검색을 시작할 수 있습니다! 🚀`;
+                        
+                        this.addMessage('ai', infoText);
+                        
+                        // 지도 표시
+                        const locationWithAddress = {
+                            ...location,
+                            address: data.address_info ? data.address_info.address : null,
+                            region: data.address_info ? data.address_info.region_name : null
+                        };
+                        this.showLocationMap(locationWithAddress);
+                        
+                    } else {
+                        // API 호출 실패 시 기본 정보만 표시
+                        this.addMessage('ai', `🎯 위치 정보 획득 완료!\n\n🗺️ GPS 좌표: ${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}\n📏 정확도: 약 ${Math.round(location.accuracy)}m\n\n❌ 주소 변환에 실패했지만 좌표로 무선국 서비스를 이용할 수 있습니다! 🚀`);
+                        this.showLocationMap(location);
+                    }
+                } catch (error) {
+                    console.error('GPS 정보 및 주소 변환 오류:', error);
+                    // 오류 발생 시 기본 정보만 표시
+                    this.addMessage('ai', `🎯 위치 정보 획득 완료!\n\n🗺️ GPS 좌표: ${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}\n📏 정확도: 약 ${Math.round(location.accuracy)}m\n\n❌ 주소 변환 중 오류가 발생했지만 좌표로 무선국 서비스를 이용할 수 있습니다! 🚀`);
+                    this.showLocationMap(location);
+                }
+            }
+
+            async showGpsInfoWithAddress(location) {
+                try {
+                    // GPS 정보 먼저 표시
+                    this.addMessage('ai', `📍 GPS 정보를 확인하고 있습니다...\n위도: ${location.latitude.toFixed(6)}\n경도: ${location.longitude.toFixed(6)}\n정확도: 약 ${Math.round(location.accuracy)}m\n\n🔄 주소 변환 중...`);
+                    
+                    // 주소 변환 API 호출
+                    const response = await fetch('/api/chat/pinpoint-info', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            latitude: location.latitude,
+                            longitude: location.longitude
+                        })
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        
+                        let infoText = `📍 현재 GPS 정보:\n`;
+                        infoText += `🗺️ 좌표: ${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}\n`;
+                        infoText += `📏 정확도: 약 ${Math.round(location.accuracy)}m\n\n`;
+                        
+                        // 주소 정보 추가
+                        if (data.address_info && data.address_info.success) {
+                            infoText += `🏠 주소: ${data.address_info.address}\n`;
+                            if (data.address_info.region_name) {
+                                infoText += `📍 지역: ${data.address_info.region_name}\n`;
+                            }
+                            if (data.address_info.detailed_location && data.address_info.detailed_location !== data.address_info.address) {
+                                infoText += `📌 상세 위치: ${data.address_info.detailed_location}\n`;
+                            }
+                        } else {
+                            infoText += `🏠 주소: 변환 실패\n`;
+                            if (data.address_info && data.address_info.error) {
+                                infoText += `   오류: ${data.address_info.error}\n`;
+                            }
+                        }
+                        
+                        // 주변 무선국 정보 추가
+                        if (data.nearby_stations_summary) {
+                            const summary = data.nearby_stations_summary;
+                            infoText += `\n📡 주변 무선국: ${summary.total_count}개 (반경 ${Math.round(summary.search_radius/1000)}km)`;
+                        }
+                        
+                        this.addMessage('ai', infoText);
+                        
+                        // 지도 표시
+                        const locationWithAddress = {
+                            ...location,
+                            address: data.address_info ? data.address_info.address : null,
+                            region: data.address_info ? data.address_info.region_name : null
+                        };
+                        this.showLocationMap(locationWithAddress);
+                        
+                    } else {
+                        // API 호출 실패 시 기본 정보만 표시
+                        this.addMessage('ai', `📍 현재 GPS 정보:\n위도: ${location.latitude.toFixed(6)}\n경도: ${location.longitude.toFixed(6)}\n정확도: 약 ${Math.round(location.accuracy)}m\n\n❌ 주소 변환에 실패했습니다.`);
+                        this.showLocationMap(location);
+                    }
+                } catch (error) {
+                    console.error('GPS 정보 및 주소 변환 오류:', error);
+                    // 오류 발생 시 기본 정보만 표시
+                    this.addMessage('ai', `📍 현재 GPS 정보:\n위도: ${location.latitude.toFixed(6)}\n경도: ${location.longitude.toFixed(6)}\n정확도: 약 ${Math.round(location.accuracy)}m\n\n❌ 주소 변환 중 오류가 발생했습니다.`);
+                    this.showLocationMap(location);
+                }
+            }
+
+            showLocationMap(location) {
+                const mapDiv = document.createElement('div');
+                mapDiv.className = 'location-map';
+                mapDiv.style.cssText = `
+                    background: #f8f9fa;
+                    border: 1px solid #e9ecef;
+                    border-radius: 8px;
+                    padding: 12px;
+                    margin: 8px 0;
+                    text-align: center;
+                `;
+                
+                const { latitude, longitude } = location;
+                const mapUrl = `https://maps.google.com/maps?q=${latitude},${longitude}&z=15&output=embed`;
+                const linkUrl = `https://maps.google.com/maps?q=${latitude},${longitude}&z=15`;
+                
+                let titleText = '📍 현재 위치';
+                if (location.station_name) {
+                    titleText = `📍 ${location.station_name}`;
+                } else if (location.address) {
+                    titleText = '📍 현재 위치';
+                }
+                
+                let coordinateText = `위도: ${latitude.toFixed(6)}, 경도: ${longitude.toFixed(6)}`;
+                if (location.address) {
+                    coordinateText += `<br><small style="color: #666;">${location.address}</small>`;
+                }
+                
+                mapDiv.innerHTML = `
+                    <div style="margin-bottom: 8px;">
+                        <strong>${titleText}</strong>
+                    </div>
+                    <div style="font-size: 12px; color: #666; margin-bottom: 8px;">
+                        ${coordinateText}
+                    </div>
+                    <iframe 
+                        src="${mapUrl}"
+                        width="100%" 
+                        height="200" 
+                        style="border: none; border-radius: 4px;"
+                        loading="lazy">
+                    </iframe>
+                    <div style="margin-top: 8px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
+                        <a href="${linkUrl}" target="_blank" style="
+                            color: #007bff; 
+                            text-decoration: none; 
+                            font-size: 12px;
+                            padding: 4px 8px;
+                            border: 1px solid #007bff;
+                            border-radius: 4px;
+                            display: inline-block;
+                        ">
+                            🗺️ 구글 지도에서 보기
+                        </a>
+                        <button class="navigation-btn" onclick="window.chatApp.showNavigationModal(${latitude}, ${longitude}, '${titleText.replace('📍 ', '')}'); event.stopPropagation();" style="
+                            margin-left: 0;
+                            font-size: 12px;
+                            padding: 4px 8px;
+                        ">
+                            <i class="fas fa-directions"></i> 길찾기
+                        </button>
+                    </div>
+                `;
+                
+                this.messagesContainer.appendChild(mapDiv);
+                this.scrollToBottom();
+            }
+
+            async sendMessage(customMessage = null) {
+                const message = customMessage || this.messageInput.value.trim();
+                console.log(`sendMessage 호출됨: ${message}`);
+                
+                if (!message || !this.sessionId) {
+                    console.log('메시지가 비어있거나 세션 ID가 없음');
+                    return;
+                }
+
+                // 사용자 메시지 표시
+                this.addMessage('user', message);
+                
+                // 커스텀 메시지가 아닌 경우에만 입력 필드 클리어
+                if (!customMessage) {
+                    this.messageInput.value = '';
+                    this.sendBtn.disabled = true;
+                }
+
+                // 타이핑 인디케이터 표시
+                this.showTypingIndicator();
+
+                try {
+                    const response = await fetch(`${this.apiBaseUrl}/message`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            session_id: this.sessionId,
+                            message: message,
+                            location: this.userLocation
+                        })
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        
+                        setTimeout(() => {
+                            this.hideTypingIndicator();
+                            this.addMessage('ai', data.response);
+                            
+                            // Function Calling 결과 처리
+                            if (data.function_called) {
+                                this.handleFunctionResult(data.function_called, data.function_result);
+                            }
+                            
+                            // 백엔드에서 직접 전달하는 data 필드 처리
+                            if (data.data) {
+                                console.log('data.data 존재. display_type:', data.data.display_type);
+                                if (data.data.display_type === "nearby_stations_table") {
+                                    this.showNearbyStationsTable(data.data.nearby_stations, data.data.radius);
+                                } else if (data.data.search_results) {
+                                    // 일반 검색 결과 테이블 표시
+                                    this.showSearchResultsTable(data.data.search_results, data.data.total_count);
+                                }
+                            }
+
+                            // 검색어 입력 요청인 경우 입력 필드에 포커스
+                            if (data.response && data.response.includes('어떤 무선국을 검색하시겠습니까?')) {
+                                setTimeout(() => {
+                                    this.messageInput.focus();
+                                    this.messageInput.placeholder = '무선국명, 지역명 또는 키워드를 입력하세요...';
+                                    document.querySelector('.input-group').classList.add('search-mode');
+                                }, 100);
+                            } else if (data.response && (data.response.includes('검색 결과') || data.response.includes('검색 결과가 없습니다'))) {
+                                // 검색 결과가 나온 경우 또는 검색 결과가 없는 경우 placeholder 원래대로
+                                this.messageInput.placeholder = '메시지를 입력하세요...';
+                                document.querySelector('.input-group').classList.remove('search-mode');
+                            }
+
+                                                         // 항상 고정된 빠른 액션만 표시 (전체 버튼 제거)
+                             this.updateQuickActions([
+                                 { action: '무선국 등록해줘', text: '등록', icon: '📡' },
+                                 { action: 'GPS 정보 다시 확인', text: '재확인', icon: '📍' },
+                                 { action: '무선국 검색해줘', text: '검색', icon: '🔍' },
+                                 { action: '내 위치 주변 무선국 검색', text: '주변검색', icon: '🗺️' }
+                             ]);
+                            
+                            if (data.error) {
+                                this.showError(data.error);
+                            }
+                        }, 1000);
+                    } else {
+                        throw new Error('메시지 전송 실패');
+                    }
+                } catch (error) {
+                    console.error('메시지 전송 오류:', error);
+                    this.hideTypingIndicator();
+                    this.showError('메시지 전송에 실패했습니다. 다시 시도해 주세요.');
+                }
+            }
+
+            handleFunctionResult(functionName, functionResult) {
+                // GPS 요청이 필요한 경우
+                if (functionResult.request_gps) {
+                    this.requestLocationPermission();
+                }
+                
+                // 주소 변환 결과 표시
+                if (functionName === 'getAddressFromTmap') {
+                    if (functionResult.success) {
+                        this.showLocationMap({
+                            latitude: functionResult.latitude,
+                            longitude: functionResult.longitude,
+                            address: functionResult.address,
+                            region: functionResult.region_name
+                        });
+                    }
+                }
+                
+                // 등록 완료 결과 표시
+                if (functionName === 'saveRadioStation') {
+                    if (functionResult.success) {
+                        this.showRegisteredStationInfo(functionResult.station_data, functionResult.station_id);
+                    }
+                }
+                
+                // 에러 처리
+                if (!functionResult.success && functionResult.error) {
+                    this.showError(functionResult.error);
+                }
+            }
+
+            showRegisteredStationInfo(stationData, stationId) {
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'message ai';
+                infoDiv.style.cssText = `
+                    background: #e8f5e8;
+                    border: 1px solid #c8e6c9;
+                    border-radius: 8px;
+                    padding: 12px;
+                    margin: 8px 0;
+                    font-size: 14px;
+                `;
+
+                infoDiv.innerHTML = `
+                    <div style="font-weight: bold; margin-bottom: 8px; color: #2e7d32;">🎉 무선국 등록 완료!</div>
+                    <p><strong>무선국명:</strong> ${stationData.station_name}</p>
+                    <p><strong>종류:</strong> ${stationData.station_type}</p>
+                    <p><strong>위치:</strong> 위도 ${stationData.latitude.toFixed(6)}, 경도 ${stationData.longitude.toFixed(6)}</p>
+                    <p><strong>주소:</strong> ${stationData.address || '정보 없음'}</p>
+                    <p><strong>담당자:</strong> ${stationData.contact_person || '정보 없음'}</p>
+                    <p><strong>연락처:</strong> ${stationData.contact_phone || '정보 없음'}</p>
+                    <p style="margin-top: 8px;"><strong>등록번호:</strong> ${stationId}</p>
+                `;
+                this.messagesContainer.appendChild(infoDiv);
+                this.scrollToBottom();
+            }
+
+            showSearchResultsTable(searchResults, totalCount) {
+                console.log('showSearchResultsTable 호출됨. searchResults:', searchResults, 'totalCount:', totalCount);
+
+                // 제목 메시지 추가
+                const titleDiv = document.createElement('div');
+                titleDiv.className = 'message ai';
+                titleDiv.style.cssText = `
+                    background: #e8f5e8;
+                    border: 1px solid #c8e6c9;
+                    border-radius: 8px;
+                    padding: 12px;
+                    margin: 8px 0;
+                    font-size: 14px;
+                    text-align: center;
+                `;
+
+                if (!searchResults || searchResults.length === 0) {
+                    titleDiv.innerHTML = `
+                        <div style="font-weight: bold; margin-bottom: 8px; color: #2e7d32; font-size: 16px;">
+                            🔍 검색 결과 (0개)
+                        </div>
+                        <p>검색 결과가 없습니다.</p>
+                    `;
+                    this.messagesContainer.appendChild(titleDiv);
+                    this.scrollToBottom();
+                    return;
+                }
+
+                // 제목 표시
+                titleDiv.innerHTML = `
+                    <div style="font-weight: bold; color: #2e7d32; font-size: 16px;">
+                        🔍 검색 결과 (${totalCount}개)
+                    </div>
+                `;
+                this.messagesContainer.appendChild(titleDiv);
+
+                // 테이블을 별도 div로 생성
+                const tableDiv = document.createElement('div');
+                tableDiv.style.cssText = `
+                    width: 100%;
+                    margin: 8px 0;
+                    padding: 0;
+                `;
+
+                let tableHtml = `
+                    <table style="width: 100%; border-collapse: collapse; font-size: 12px; border: 1px solid #ddd; background: white; border-radius: 6px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                        <thead>
+                            <tr style="background: linear-gradient(135deg, #f8f9fa, #e9ecef);">
+                                <th style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: left; font-weight: 600; color: #495057; white-space: nowrap;">📡 무선국명</th>
+                                <th style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: center; font-weight: 600; color: #495057; white-space: nowrap;">🏷️ 종류</th>
+                                <th style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: center; font-weight: 600; color: #495057; white-space: nowrap;">📏 거리</th>
+                                <th style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: center; font-weight: 600; color: #495057; white-space: nowrap;">🧭 길찾기</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                searchResults.forEach((result, index) => {
+                    const station = result;  // 백엔드에서 이미 station.to_dict()로 변환된 상태
+                    const hasDistance = station.distance_meters !== undefined;
+                    const distanceText = hasDistance ? `${(station.distance_meters / 1000).toFixed(2)}km` : 'N/A';
+                    const rowBg = index % 2 === 0 ? '#ffffff' : '#f8f9fa';
+                    
+                    tableHtml += `
+                        <tr style="background: ${rowBg}; transition: background-color 0.2s ease;" onmouseover="this.style.backgroundColor='#e3f2fd'" onmouseout="this.style.backgroundColor='${rowBg}'">
+                            <td style="padding: 10px 8px; border: 1px solid #dee2e6; vertical-align: middle;">
+                                <a href="#" onclick="window.chatApp.showLocationMap({latitude: ${station.latitude}, longitude: ${station.longitude}, station_name: '${station.station_name}'}); return false;" 
+                                   style="color: #1976d2; text-decoration: none; font-weight: 500; display: flex; align-items: center; gap: 4px;">
+                                    📍 ${station.station_name}
+                                </a>
+                                <div style="font-size: 10px; color: #666; margin-top: 2px;">
+                                    🗺️ ${station.latitude.toFixed(6)}, ${station.longitude.toFixed(6)}
+                                </div>
+                            </td>
+                            <td style="padding: 10px 8px; border: 1px solid #dee2e6; text-align: center; vertical-align: middle;">
+                                <span style="background: linear-gradient(135deg, #e3f2fd, #bbdefb); color: #1565c0; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500;">
+                                    ${station.station_type || 'N/A'}
+                                </span>
+                            </td>
+                            <td style="padding: 10px 8px; border: 1px solid #dee2e6; text-align: center; vertical-align: middle;">
+                                <span style="color: #2e7d32; font-weight: 600; font-size: 11px;">${distanceText}</span>
+                            </td>
+                            <td style="padding: 10px 8px; border: 1px solid #dee2e6; text-align: center; vertical-align: middle;">
+                                <button class="navigation-btn" onclick="window.chatApp.showNavigationModal(${station.latitude}, ${station.longitude}, '${station.station_name}'); event.stopPropagation();">
+                                    <i class="fas fa-directions"></i> 길찾기
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                tableHtml += `
+                        </tbody>
+                    </table>
+                `;
+
+                tableDiv.innerHTML = tableHtml;
+                this.messagesContainer.appendChild(tableDiv);
+
+                // 안내 메시지를 별도로 추가
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'message ai';
+                infoDiv.style.cssText = `
+                    background: #f8f9fa;
+                    border: 1px solid #dee2e6;
+                    border-radius: 8px;
+                    padding: 8px 12px;
+                    margin: 8px 0;
+                    text-align: center;
+                    font-size: 11px;
+                    color: #6c757d;
+                `;
+                infoDiv.innerHTML = '💡 무선국명을 클릭하면 지도에서 위치를 확인할 수 있습니다';
+                this.messagesContainer.appendChild(infoDiv);
+
+                this.scrollToBottom();
+            }
+
+            showNearbyStationsTable(stations, radius) {
+                console.log('showNearbyStationsTable 호출됨. stations:', stations, 'radius:', radius);
+
+                // 제목 메시지 추가
+                const titleDiv = document.createElement('div');
+                titleDiv.className = 'message ai';
+                titleDiv.style.cssText = `
+                    background: #e8f5e8;
+                    border: 1px solid #c8e6c9;
+                    border-radius: 8px;
+                    padding: 12px;
+                    margin: 8px 0;
+                    font-size: 14px;
+                    text-align: center;
+                `;
+
+                if (!stations || stations.length === 0) {
+                    titleDiv.innerHTML = `
+                        <div style="font-weight: bold; margin-bottom: 8px; color: #2e7d32; font-size: 16px;">
+                            🔍 현재 위치에서 반경 ${radius}km 내 무선국 (0개)
+                        </div>
+                        <p>주변에 무선국이 없습니다.</p>
+                    `;
+                    this.messagesContainer.appendChild(titleDiv);
+                    this.scrollToBottom();
+                    return;
+                }
+
+                // 제목 표시
+                titleDiv.innerHTML = `
+                    <div style="font-weight: bold; color: #2e7d32; font-size: 16px;">
+                        🔍 현재 위치에서 반경 ${radius}km 내 무선국 (${stations.length}개)
+                    </div>
+                `;
+                this.messagesContainer.appendChild(titleDiv);
+
+                // 테이블을 별도 div로 생성
+                const tableDiv = document.createElement('div');
+                tableDiv.style.cssText = `
+                    width: 100%;
+                    margin: 8px 0;
+                    padding: 0;
+                `;
+
+                let tableHtml = `
+                    <table style="width: 100%; border-collapse: collapse; font-size: 12px; border: 1px solid #ddd; background: white; border-radius: 6px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                        <thead>
+                            <tr style="background: linear-gradient(135deg, #f8f9fa, #e9ecef);">
+                                <th style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: left; font-weight: 600; color: #495057; white-space: nowrap;">📡 무선국명</th>
+                                <th style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: center; font-weight: 600; color: #495057; white-space: nowrap;">🏷️ 종류</th>
+                                <th style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: center; font-weight: 600; color: #495057; white-space: nowrap;">📏 거리</th>
+                                <th style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: center; font-weight: 600; color: #495057; white-space: nowrap;">🧭 길찾기</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                stations.forEach((station, index) => {
+                    const distanceKm = (station.distance_meters / 1000).toFixed(2);
+                    const rowBg = index % 2 === 0 ? '#ffffff' : '#f8f9fa';
+                    tableHtml += `
+                        <tr style="background: ${rowBg}; transition: background-color 0.2s ease;" onmouseover="this.style.backgroundColor='#e3f2fd'" onmouseout="this.style.backgroundColor='${rowBg}'">
+                            <td style="padding: 10px 8px; border: 1px solid #dee2e6; vertical-align: middle;">
+                                <a href="#" onclick="window.chatApp.showLocationMap({latitude: ${station.latitude}, longitude: ${station.longitude}, station_name: '${station.station_name}'}); return false;" 
+                                   style="color: #1976d2; text-decoration: none; font-weight: 500; display: flex; align-items: center; gap: 4px;">
+                                    📍 ${station.station_name}
+                                </a>
+                                <div style="font-size: 10px; color: #666; margin-top: 2px;">
+                                    🗺️ ${station.latitude.toFixed(6)}, ${station.longitude.toFixed(6)}
+                                </div>
+                            </td>
+                            <td style="padding: 10px 8px; border: 1px solid #dee2e6; text-align: center; vertical-align: middle;">
+                                <span style="background: linear-gradient(135deg, #e3f2fd, #bbdefb); color: #1565c0; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500;">
+                                    ${station.station_type || 'N/A'}
+                                </span>
+                            </td>
+                            <td style="padding: 10px 8px; border: 1px solid #dee2e6; text-align: center; vertical-align: middle;">
+                                <span style="color: #2e7d32; font-weight: 600; font-size: 11px;">${distanceKm}km</span>
+                            </td>
+                            <td style="padding: 10px 8px; border: 1px solid #dee2e6; text-align: center; vertical-align: middle;">
+                                <button class="navigation-btn" onclick="window.chatApp.showNavigationModal(${station.latitude}, ${station.longitude}, '${station.station_name}'); event.stopPropagation();">
+                                    <i class="fas fa-directions"></i> 길찾기
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                tableHtml += `
+                        </tbody>
+                    </table>
+                `;
+
+                tableDiv.innerHTML = tableHtml;
+                this.messagesContainer.appendChild(tableDiv);
+
+                // 안내 메시지를 별도로 추가
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'message ai';
+                infoDiv.style.cssText = `
+                    background: #f8f9fa;
+                    border: 1px solid #dee2e6;
+                    border-radius: 8px;
+                    padding: 8px 12px;
+                    margin: 8px 0;
+                    text-align: center;
+                    font-size: 11px;
+                    color: #6c757d;
+                `;
+                infoDiv.innerHTML = '💡 무선국명을 클릭하면 지도에서 위치를 확인할 수 있습니다';
+                this.messagesContainer.appendChild(infoDiv);
+
+                this.scrollToBottom();
+            }
+
+            addMessage(sender, content) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${sender}`;
+
+                const avatar = document.createElement('div');
+                avatar.className = 'message-avatar';
+                avatar.textContent = sender === 'user' ? '👤' : '🤖';
+
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'message-content';
+
+                const bubble = document.createElement('div');
+                bubble.className = 'message-bubble';
+                bubble.innerHTML = content.replace(/\n/g, '<br>');
+
+                const time = document.createElement('div');
+                time.className = 'message-time';
+                time.textContent = new Date().toLocaleTimeString('ko-KR', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+
+                contentDiv.appendChild(bubble);
+                contentDiv.appendChild(time);
+                messageDiv.appendChild(avatar);
+                messageDiv.appendChild(contentDiv);
+
+                this.messagesContainer.appendChild(messageDiv);
+                this.scrollToBottom();
+            }
+
+            updateQuickActions(actions) {
+                const quickActionsElement = document.getElementById('quick-actions');
+                this.quickActionsContainer.innerHTML = '';
+
+                // 항상 고정된 빠른 액션만 표시 (아이콘 포함, 전체 버튼 제거)
+                const fixedActions = [
+                    { action: '무선국 등록해줘', text: '등록', icon: '📡' },
+                    { action: 'GPS 정보 다시 확인', text: '재확인', icon: '📍' },
+                    { action: '무선국 검색해줘', text: '검색', icon: '🔍' },
+                    { action: '내 위치 주변 무선국 검색', text: '주변검색', icon: '🗺️' }
+                ];
+
+                quickActionsElement.style.display = 'block';
+
+                fixedActions.forEach((action, index) => {
+                    const button = document.createElement('button');
+                    button.className = 'quick-action-btn';
+                    button.setAttribute('data-action', action.action);
+                    
+                    // 아이콘과 텍스트를 분리하여 구조화
+                    button.innerHTML = `
+                        <div class="btn-icon">${action.icon}</div>
+                        <div class="btn-text">${action.text}</div>
+                    `;
+                    
+                    button.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log(`빠른 액션 클릭: ${action.action}`, action);
+                        this.handleQuickAction(action.action);
+                    });
+                    this.quickActionsContainer.appendChild(button);
+                });
+
+                console.log(`빠른 액션 업데이트: ${fixedActions.length}개 버튼 생성`, fixedActions);
+            }
+
+            showTypingIndicator() {
+                this.typingIndicator.style.display = 'flex';
+                this.scrollToBottom();
+            }
+
+            hideTypingIndicator() {
+                this.typingIndicator.style.display = 'none';
+            }
+
+            showError(message) {
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'error-message';
+                errorDiv.textContent = message;
+                
+                this.messagesContainer.appendChild(errorDiv);
+                this.scrollToBottom();
+
+                // 5초 후 오류 메시지 제거
+                setTimeout(() => {
+                    if (errorDiv.parentNode) {
+                        errorDiv.parentNode.removeChild(errorDiv);
+                    }
+                }, 5000);
+            }
+
+            updateConnectionStatus(status, type) {
+                this.connectionStatus.textContent = status;
+                this.connectionStatus.style.color = type === 'error' ? '#c62828' : '#2e7d32';
+                this.connectionStatusDisplay.textContent = status;
+                
+                if (type === 'error') {
+                    this.connectionStatusDisplay.classList.add('error');
+                } else {
+                    this.connectionStatusDisplay.classList.remove('error');
+                }
+            }
+
+            scrollToBottom() {
+                setTimeout(() => {
+                    this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+                }, 100);
+            }
+
+            showNavigationModal(latitude, longitude, stationName) {
+                console.log(`네비게이션 모달 열기: ${stationName} (${latitude}, ${longitude})`);
+                
+                const modal = document.getElementById('navigation-modal');
+                const optionsContainer = document.getElementById('navigation-options');
+                
+                // 네비게이션 옵션들 생성
+                const options = [
+                    {
+                        name: '카카오맵',
+                        icon: '🟡',
+                        desc: '카카오내비로 길찾기',
+                        url: `kakaomap://route?ep=${latitude},${longitude}&by=CAR`,
+                        webFallback: `https://map.kakao.com/link/to/${encodeURIComponent(stationName)},${latitude},${longitude}`
+                    },
+                    {
+                        name: '네이버지도',
+                        icon: '🟢',
+                        desc: '네이버지도로 길찾기',
+                        url: `nmap://route/car?dlat=${latitude}&dlng=${longitude}&dname=${encodeURIComponent(stationName)}`,
+                        webFallback: `https://map.naver.com/v5/directions/-/-/${latitude},${longitude},${encodeURIComponent(stationName)}/car`
+                    },
+                    {
+                        name: '구글지도',
+                        icon: '🔵',
+                        desc: '구글지도로 길찾기',
+                        url: `https://maps.google.com/maps?daddr=${latitude},${longitude}`,
+                        webFallback: `https://maps.google.com/maps?daddr=${latitude},${longitude}`
+                    }
+                ];
+                
+                // 옵션 HTML 생성
+                optionsContainer.innerHTML = options.map(option => `
+                    <div class="navigation-option" onclick="openNavigation('${option.url}', '${option.webFallback}', '${option.name}')">
+                        <div class="navigation-option-icon">${option.icon}</div>
+                        <div class="navigation-option-info">
+                            <div class="navigation-option-name">${option.name}</div>
+                            <div class="navigation-option-desc">${option.desc}</div>
+                        </div>
+                    </div>
+                `).join('');
+                
+                // 모달 표시
+                modal.classList.add('show');
+                
+                // 모달 배경 클릭 시 닫기
+                modal.onclick = (e) => {
+                    if (e.target === modal) {
+                        closeNavigationModal();
+                    }
+                };
+            }
+        }
+
+        function closeNavigationModal() {
+            const modal = document.getElementById('navigation-modal');
+            modal.classList.remove('show');
+            modal.onclick = null;
+        }
+
+        function openNavigation(url, webFallback, appName) {
+            console.log(`네비게이션 열기: ${appName} - ${url}`);
+            
+            // 모바일에서 앱 URL 스킴 시도
+            if (isMobileDevice()) {
+                // 앱 URL 스킴 시도
+                window.location.href = url;
+                
+                // 앱이 설치되지 않은 경우를 대비해 웹 fallback 설정
+                setTimeout(() => {
+                    if (confirm(`${appName} 앱이 설치되지 않았습니다. 웹 버전으로 이동하시겠습니까?`)) {
+                        window.open(webFallback, '_blank');
+                    }
+                }, 1000);
+            } else {
+                // 데스크톱에서는 웹 버전 사용
+                window.open(webFallback, '_blank');
+            }
+            
+            closeNavigationModal();
+        }
+
+        function isMobileDevice() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        }
+
+        // 앱 초기화
+        document.addEventListener('DOMContentLoaded', () => {
+            window.chatApp = new ChatApp();
+        });
+    </script>
+</body>
+</html>

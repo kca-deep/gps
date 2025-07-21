@@ -1,0 +1,29 @@
+# GPS 무선국 검사 AI 채팅 시스템 환경 변수 설정 템플릿
+# 사용법: 이 파일을 .env로 복사한 후 실제 값으로 수정하세요
+
+# OpenAI API 설정
+OPENAI_API_KEY=your_secret_key_here
+
+# Flask 설정
+FLASK_ENV=development
+FLASK_DEBUG=True
+SECRET_KEY=your_secret_key_here
+
+# 데이터베이스 설정
+DATABASE_PATH=data/gps_inspection.db
+
+# 로깅 설정
+LOG_LEVEL=INFO
+LOG_FILE=logs/app.log
+
+# 캐시 설정
+CACHE_TTL=300
+CACHE_MAX_SIZE=1000
+
+# 위치 서비스 설정
+DEFAULT_SEARCH_RADIUS=100
+MAX_SEARCH_RADIUS=50000
+
+# 검색 서비스 설정
+MAX_SEARCH_RESULTS=50
+SIMILARITY_THRESHOLD=0.7 
